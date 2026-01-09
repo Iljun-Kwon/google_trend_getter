@@ -7,17 +7,21 @@ from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-
-URL = "https://trends.google.co.kr/trends/explore?date=now%207-d&geo=KR&gprop=youtube&hl=ko"
-
-DOWNLOAD_DIR = Path.cwd() / "csv"
-DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
 PROFILE_DIR = Path.cwd() / "edge_automation_profile"
 PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
+ALLOWED_GEOS = {"KR", "US", "MX"}
 
-def make_edge_driver():
+def trends_url(geo: str) -> str:
+    g = geo.upper()
+    if g not in ALLOWED_GEOS:
+        raise ValueError(f"geo must be one of {sorted(ALLOWED_GEOS)}")
+    return f"https://trends.google.co.kr/trends/explore?date=now%207-d&geo={g}&gprop=youtube&hl=ko"
+
+
+def make_edge_driver(download_dir: Path):
+    download_dir.mkdir(parents=True, exist_ok=True)
+
     opts = EdgeOptions()
     opts.add_argument("--window-size=1400,1000")
     opts.add_argument("--disable-gpu")
@@ -25,7 +29,7 @@ def make_edge_driver():
     opts.add_argument("--remote-debugging-port=0")
 
     prefs = {
-        "download.default_directory": str(DOWNLOAD_DIR.resolve()),
+        "download.default_directory": str(download_dir.resolve()),
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True,
@@ -35,14 +39,14 @@ def make_edge_driver():
     return webdriver.Edge(options=opts)
 
 
-def wait_for_all_downloads(expected_count=2, timeout=90):
+def wait_for_all_downloads(download_dir: Path, expected_count=2, timeout=90):
     end = time.time() + timeout
     while time.time() < end:
-        if list(DOWNLOAD_DIR.glob("*.crdownload")):
+        if list(download_dir.glob("*.crdownload")):
             time.sleep(0.5)
             continue
 
-        csvs = list(DOWNLOAD_DIR.glob("*.csv"))
+        csvs = list(download_dir.glob("*.csv"))
         if len(csvs) >= expected_count:
             return csvs
 
@@ -51,9 +55,9 @@ def wait_for_all_downloads(expected_count=2, timeout=90):
     raise TimeoutError("Downloads did not complete in time.")
 
 
-def cleanup_entities_csv():
+def cleanup_entities_csv(download_dir: Path):
     """Delete relatedEntities.csv if it exists."""
-    for p in DOWNLOAD_DIR.glob("*relatedEntities*.csv"):
+    for p in download_dir.glob("*relatedEntities*.csv"):
         try:
             p.unlink()
             print(f"Deleted: {p.name}")
@@ -61,12 +65,13 @@ def cleanup_entities_csv():
             print(f"Failed to delete {p.name}: {e}")
 
 
-def download_related_queries_only():
-    driver = make_edge_driver()
+def download_related_queries_only(geo: str, csv_dir: Path):
+    url = trends_url(geo)
+    driver = make_edge_driver(csv_dir)
     wait = WebDriverWait(driver, 40)
 
     try:
-        driver.get(URL)
+        driver.get(url)
         time.sleep(2)
         driver.refresh()
         time.sleep(3)
@@ -92,20 +97,25 @@ def download_related_queries_only():
                 driver.execute_script("arguments[0].click();", btn)
             time.sleep(1.2)
 
-        wait_for_all_downloads(expected_count=len(export_buttons))
+        wait_for_all_downloads(csv_dir, expected_count=len(export_buttons))
 
         # ✅ Delete relatedEntities.csv
-        cleanup_entities_csv()
+        cleanup_entities_csv(csv_dir)
 
         # Remaining file should be relatedQueries.csv
-        remaining = list(DOWNLOAD_DIR.glob("*.csv"))
-        print("Remaining CSV files:")
-        for f in remaining:
-            print(" -", f.name)
+        candidates = list(csv_dir.glob("*relatedQueries*.csv"))
+        if not candidates:
+            raise FileNotFoundError("relatedQueries.csv not found after download")
+        newest = max(candidates, key=lambda p: p.stat().st_mtime)
 
+        return newest
+    
     finally:
         driver.quit()
 
 
 if __name__ == "__main__":
-    download_related_queries_only()
+    base = Path.cwd() / "csv"
+    for g in ("KR", "US", "MX"):
+        out_dir = base / g
+        p = download_related_queries_only(g, out_dir)

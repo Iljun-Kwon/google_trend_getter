@@ -2,10 +2,6 @@ import csv
 import re
 from pathlib import Path
 
-INPUT_CSV = Path("csv/relatedQueries.csv")
-OUTPUT_CSV = Path("csv/relatedQueries_clean.csv")
-
-
 def parse_query(raw: str):
     s = str(raw).strip()
     s = s.replace(" ", "")
@@ -61,18 +57,12 @@ def clean_related_queries(input_csv: Path, output_csv: Path):
         if len(r) < 2:
             continue
 
-        query = r[0].strip()
-        value_raw = r[1].strip()
+        query = parse_query(r[0].strip())
+        value_int = parse_value(r[1].strip())
 
-        query = parse_query(query)
-        value_int = parse_value(value_raw)
+        out_rows.append((query, "" if value_int is None else str(value_int)))
 
-        # Put empty value if unparsable
-        if value_int is None:
-            out_rows.append((query, ""))
-        else:
-            out_rows.append((query, str(value_int)))
-
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
     with output_csv.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
         w.writerows(out_rows)
@@ -80,5 +70,5 @@ def clean_related_queries(input_csv: Path, output_csv: Path):
     print(f"Saved: {output_csv}")
 
 
-if __name__ == "__main__":
-    clean_related_queries(INPUT_CSV, OUTPUT_CSV)
+#if __name__ == "__main__":
+#    clean_related_queries(INPUT_CSV, OUTPUT_CSV)

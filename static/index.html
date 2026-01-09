@@ -1,66 +1,131 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Google Trends Controller</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 40px;
-        }
-        button {
-            width: 260px;
-            padding: 14px;
-            margin: 10px 0;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        #output {
-            margin-top: 20px;
-            white-space: pre-wrap;
-            background: #f5f5f5;
-            padding: 12px;
-            border-radius: 6px;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <title>Google Trends Controller (KR/US/MX)</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; max-width: 900px; }
+    .row { margin: 14px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    select, button { padding: 12px 14px; font-size: 15px; cursor: pointer; }
+    button { min-width: 260px; }
+    .small { min-width: 220px; }
+    #output {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      background: #f5f5f5;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      min-height: 120px;
+    }
+    .hint { color: #666; font-size: 13px; margin-top: 6px; }
+    .divider { margin: 18px 0; border-top: 1px solid #ddd; }
+  </style>
 </head>
 <body>
 
-<h2>Google Trends API</h2>
+  <h2>Google Trends API</h2>
 
-<button onclick="callApi('/get_daily_trends', 'GET')">
-    GET /get_daily_trends
-</button><br>
+  <div class="row">
+    <label for="geo"><b>Region:</b></label>
+    <select id="geo">
+      <option value="KR">KR</option>
+      <option value="US">US</option>
+      <option value="MX">MX</option>
+    </select>
 
-<button onclick="callApi('/get_daily_trends/refresh', 'POST')">
-    POST /get_daily_trends/refresh
-</button><br>
+    <button class="small" onclick="openDocs()">Open Swagger Docs</button>
+  </div>
 
-<button onclick="callApi('/get_all_trends', 'GET')">
-    GET /get_all_trends
-</button>
+  <div class="row">
+    <button onclick="getDaily()">GET /{geo}/get_daily_trends</button>
+    <button onclick="refreshDaily()">POST /{geo}/get_daily_trends/refresh</button>
+    <button onclick="getAll()">GET /{geo}/get_all_trends</button>
+  </div>
 
-<div id="output"></div>
+  <div class="divider"></div>
+
+  <div class="row">
+    <button onclick="refreshAll()">POST /all/get_daily_trends/refresh (KR+US+MX)</button>
+  </div>
+
+  <div class="hint">
+    Tip: Refresh is POST (state-changing). If you run into 429, try spacing refreshes out.
+  </div>
+
+  <div id="output"></div>
 
 <script>
-async function callApi(url, method) {
+  function selectedGeo() {
+    return document.getElementById("geo").value;
+  }
+
+  function openDocs() {
+    window.open("/docs", "_blank");
+  }
+
+  async function getDaily() {
+    const geo = selectedGeo();
+    await callApi(`/${geo}/get_daily_trends`, "GET");
+  }
+
+  async function refreshDaily() {
+    const geo = selectedGeo();
+    await callApi(`/${geo}/get_daily_trends/refresh`, "POST");
+  }
+
+  async function getAll() {
+    const geo = selectedGeo();
+    await callApi(`/${geo}/get_all_trends`, "GET");
+  }
+
+  async function refreshAll() {
+    await callApi(`/all/get_daily_trends/refresh`, "POST");
+  }
+
+  async function callApi(url, method) {
     const output = document.getElementById("output");
-    output.textContent = "Loading...";
+    output.textContent = `Loading... (${method} ${url})`;
 
     try {
-        const res = await fetch(url, { method });
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-            const json = await res.json();
-            output.textContent = JSON.stringify(json, null, 2);
-        } else {
-            const text = await res.text();
-            output.textContent = text;
-        }
+      const res = await fetch(url, { method });
+
+      // Try to parse JSON if possible
+      const contentType = res.headers.get("content-type") || "";
+      let payload;
+
+      if (contentType.includes("application/json")) {
+        payload = await res.json();
+      } else {
+        payload = await res.text();
+      }
+
+      if (!res.ok) {
+        // Show error details nicely
+        output.textContent = JSON.stringify({
+          ok: false,
+          status: res.status,
+          statusText: res.statusText,
+          url,
+          method,
+          detail: payload
+        }, null, 2);
+        return;
+      }
+
+      output.textContent = (typeof payload === "string")
+        ? payload
+        : JSON.stringify(payload, null, 2);
+
     } catch (err) {
-        output.textContent = "Error: " + err;
+      output.textContent = JSON.stringify({
+        ok: false,
+        error: String(err),
+        url,
+        method
+      }, null, 2);
     }
-}
+  }
 </script>
 
 </body>
