@@ -1,0 +1,44 @@
+# =========================
+# Edge / Browser automation
+# =========================
+edge_automation_profile/
+edge_profile/
+
+# =========================
+# Downloads / generated data
+# =========================
+downloads/
+*.csv
+
+# =========================
+# Python cache / virtual env
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+.env
+.venv/
+venv/
+ENV/
+env/
+
+# =========================
+# IDE / OS
+# =========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
