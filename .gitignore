@@ -5,10 +5,10 @@ edge_automation_profile/
 edge_profile/
 
 # =========================
-# Downloads / generated data
+# csv / generated data
 # =========================
-downloads/
-*.csv
+#csv/
+#*.csv
 
 # =========================
 # Python cache / virtual env
