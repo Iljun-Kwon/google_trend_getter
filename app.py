@@ -90,8 +90,8 @@ def _refresh_one_geo(geo: str):
     
     # 1) Download raw relatedQueries.csv into csv/{GEO}/
     downloaded_raw = download_related_queries_only(geo.upper(), gdir)
-    if downloaded_raw.resolve() != raw_csv.resolve():
-        downloaded_raw.replace(raw_csv)
+    #if downloaded_raw.resolve() != raw_csv.resolve():
+    #    downloaded_raw.replace(raw_csv)
 
     if not raw_csv.exists():
         raise FileNotFoundError(f"Download finished but {raw_csv.name} not found in {gdir}")

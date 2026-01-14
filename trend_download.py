@@ -23,6 +23,7 @@ def make_edge_driver(download_dir: Path):
     download_dir.mkdir(parents=True, exist_ok=True)
 
     opts = EdgeOptions()
+    opts.add_argument("--log-level=3")
     opts.add_argument("--window-size=1400,1000")
     opts.add_argument("--disable-gpu")
     opts.add_argument(f"--user-data-dir={PROFILE_DIR.resolve()}")
@@ -66,6 +67,7 @@ def cleanup_entities_csv(download_dir: Path):
 
 
 def download_related_queries_only(geo: str, csv_dir: Path):
+    before_csvs = {p.resolve() for p in csv_dir.glob("*.csv")}
     url = trends_url(geo)
     driver = make_edge_driver(csv_dir)
     wait = WebDriverWait(driver, 40)
@@ -101,12 +103,24 @@ def download_related_queries_only(geo: str, csv_dir: Path):
 
         # ✅ Delete relatedEntities.csv
         cleanup_entities_csv(csv_dir)
-
-        # Remaining file should be relatedQueries.csv
+        #'''
+        # for using mannual downloads, Remaining file should be relatedQueries.csv
         candidates = list(csv_dir.glob("*relatedQueries*.csv"))
         if not candidates:
             raise FileNotFoundError("relatedQueries.csv not found after download")
         newest = max(candidates, key=lambda p: p.stat().st_mtime)
+        #'''
+
+        #for preventing corrupt name
+        '''
+        after_csvs = {p.resolve() for p in csv_dir.glob("*.csv")}
+        new_csvs = list(after_csvs - before_csvs)
+
+        new_queries = [p for p in new_csvs if ("relatedQueries" in p.name and "clean" not in p.name)]
+        if not new_queries:
+            raise RuntimeError("Download failed: no NEW relatedQueries*.csv appeared (prevented corrupt rename).")
+        newest = max(new_queries, key=lambda p: p.stat().st_mtime)
+        #'''
 
         return newest
     
