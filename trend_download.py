@@ -4,11 +4,13 @@ from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.edge.service import Service as EdgeService
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 PROFILE_DIR = Path.cwd() / "edge_automation_profile"
 PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+EDGE_DRIVER_PATH = r"C:\WebDriver\msedgedriver.exe"
 
 ALLOWED_GEOS = {"KR", "US", "MX"}
 
@@ -37,7 +39,9 @@ def make_edge_driver(download_dir: Path):
     }
     opts.add_experimental_option("prefs", prefs)
 
-    return webdriver.Edge(options=opts)
+    service = EdgeService(EDGE_DRIVER_PATH)
+
+    return webdriver.Edge(service=service, options=opts)
 
 
 def wait_for_all_downloads(download_dir: Path, expected_count=2, timeout=90):
